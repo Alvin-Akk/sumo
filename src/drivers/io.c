@@ -63,7 +63,10 @@ static volatile uint8_t *const port_sel2_regs[IO_PORT_CNT] = { &P1SEL2, &P2SEL2,
  * inputs because that leads to unpredictable (noise) current consumption. I choose to
  * configure them as output (instead of input) to lower the risk of short-circuit, and
  * pull them down. */
-#define UNUSED_CONFIG { IO_SELECT_GPIO, IO_RESISTOR_ENABLED, IO_DIR_OUTPUT, IO_OUT_LOW }
+#define UNUSED_CONFIG                                                                              \
+    {                                                                                              \
+        IO_SELECT_GPIO, IO_RESISTOR_ENABLED, IO_DIR_OUTPUT, IO_OUT_LOW                             \
+    }
 
 // This array holds the initial configuration for all IO pins.
 static const struct io_config io_initial_configs[IO_PORT_CNT * IO_PIN_CNT_PER_PORT] = {
@@ -109,14 +112,14 @@ static const struct io_config io_initial_configs[IO_PORT_CNT * IO_PIN_CNT_PER_PO
     [IO_MOTORS_RIGHT_CC_1] = { IO_SELECT_GPIO, IO_RESISTOR_DISABLED, IO_DIR_OUTPUT, IO_OUT_LOW },
     [IO_MOTORS_RIGHT_CC_2] = { IO_SELECT_GPIO, IO_RESISTOR_DISABLED, IO_DIR_OUTPUT, IO_OUT_LOW },
 
-    // Output driven by A0, direction must be set to output
+    // Output driven by timer A0, direction must be set to output
     [IO_PWM_MOTORS_LEFT] = { IO_SELECT_ALT1, IO_RESISTOR_DISABLED, IO_DIR_OUTPUT, IO_OUT_LOW },
     [IO_PWM_MOTORS_RIGHT] = { IO_SELECT_ALT1, IO_RESISTOR_DISABLED, IO_DIR_OUTPUT, IO_OUT_LOW },
 
     /* Input
      * Range sensor provides open-drain output and should be connected to an external pull-up
-     * resistor, but I mised that on the PCB, so use the internal pull-up instead. */
-    [IO_RANGE_SENSOR_FRONT_INT] = { IO_SELECT_GPIO, IO_RESISTOR_DISABLED, IO_DIR_INPUT,
+     * resistor, but I missed that on the PCB, so use the internal pull-up instead. */
+    [IO_RANGE_SENSOR_FRONT_INT] = { IO_SELECT_GPIO, IO_RESISTOR_ENABLED, IO_DIR_INPUT,
                                     IO_OUT_HIGH },
 
     // Outputs
@@ -137,9 +140,42 @@ static const struct io_config io_initial_configs[IO_PORT_CNT * IO_PIN_CNT_PER_PO
 #endif
 };
 
+typedef enum
+{
+    HW_TYPE_LAUNCHPAD,
+    HW_TYPE_NSUMO
+} hw_type_e;
+
+/* NSUMO has a pullup resistor on pin 3.4, so read that pin to detect the hardware type.
+ * The Launchpad lacks physical pins on port 3, but the corresponding port 3 registers still
+ * exist internally. */
+static hw_type_e io_detect_hw_type(void)
+{
+    P3SEL &= ~(BIT4);
+    P3SEL2 &= ~(BIT4);
+    P3DIR &= ~(BIT4);
+    P3REN &= ~(BIT4);
+    P3OUT &= ~(BIT4);
+    // If pin 3.4 is high it means there is an external pullup resistor
+    return P3IN & BIT4 ? HW_TYPE_NSUMO : HW_TYPE_LAUNCHPAD;
+}
+
 void io_init(void)
 {
-    // TODO: Loop initialize all pins
+#if defined(NSUMO)
+    // TODO: Assert
+    if (io_detect_hw_type() != HW_TYPE_NSUMO) {
+        while (1) { }
+    }
+#elif defined(LAUNCHPAD)
+    // TODO: Assert
+    if (io_detect_hw_type() != HW_TYPE_LAUNCHPAD) {
+        while (1) { }
+    }
+#else
+    // TODO: Assert
+    while (1) { }
+#endif
     for (io_e io = (io_e)IO_10; io < ARRAY_SIZE(io_initial_configs); io++) {
         io_configure(io, &io_initial_configs[io]);
     }
