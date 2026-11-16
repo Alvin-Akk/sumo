@@ -63,10 +63,7 @@ static volatile uint8_t *const port_sel2_regs[IO_PORT_CNT] = { &P1SEL2, &P2SEL2,
  * inputs because that leads to unpredictable (noise) current consumption. I choose to
  * configure them as output (instead of input) to lower the risk of short-circuit, and
  * pull them down. */
-#define UNUSED_CONFIG                                                                              \
-    {                                                                                              \
-        IO_SELECT_GPIO, IO_RESISTOR_ENABLED, IO_DIR_OUTPUT, IO_OUT_LOW                             \
-    }
+#define UNUSED_CONFIG { IO_SELECT_GPIO, IO_RESISTOR_ENABLED, IO_DIR_OUTPUT, IO_OUT_LOW }
 
 // This array holds the initial configuration for all IO pins.
 static const struct io_config io_initial_configs[IO_PORT_CNT * IO_PIN_CNT_PER_PORT] = {

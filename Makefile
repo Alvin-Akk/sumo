@@ -16,11 +16,14 @@ TOOLS_DIR = ${TOOLS_PATH}
 MSPGCC_ROOT_DIR = $(TOOLS_DIR)/msp430-gcc
 MSPGCC_BIN_DIR = $(MSPGCC_ROOT_DIR)/bin
 MSPGCC_INCLUDE_DIR = $(MSPGCC_ROOT_DIR)/include
+
 BUILD_DIR = build
 OBJ_DIR = $(BUILD_DIR)/obj
-TI_CCS_DIR = $(TOOLS_DIR)/ccs1120/ccs
+BIN_DIR = $(BUILD_DIR)/bin
+
+TI_CCS_DIR = $(TOOLS_DIR)/ccs2041/ccs
 DEBUG_BIN_DIR = $(TI_CCS_DIR)/ccs_base/DebugServer/bin
-DEBUG_DRIVERS_DIR = $(TI_CCS_DIR)/ccs_base/DebugServer/drivers
+CCXML = MSP430G2553.ccxml
 
 LIB_DIRS = $(MSPGCC_INCLUDE_DIR)
 INCLUDE_DIRS = $(MSPGCC_INCLUDE_DIR) \
@@ -30,13 +33,13 @@ INCLUDE_DIRS = $(MSPGCC_INCLUDE_DIR) \
 
 # Toolchain
 CC = $(MSPGCC_BIN_DIR)/msp430-elf-gcc
-RM = rm
-DEBUG = LD_LIBRARY_PATH=$(DEBUG_DRIVERS_DIR) $(DEBUG_BIN_DIR)/mspdebug
+RM = rm -f
+DEBUG = $(DEBUG_BIN_DIR)/DSLite
 CPPCHECK = cppcheck
-FORMAT = clang-format-12
+FORMAT = clang-format
 
 # Files
-TARGET = $(BUILD_DIR)/$(TARGET_NAME)
+TARGET = $(BIN_DIR)/$(TARGET_NAME)
 
 SOURCES_WITH_HEADERS = \
 		src/drivers/mcu_init.c \
@@ -69,6 +72,7 @@ CPPCHECK_FLAGS = \
 	--suppress=missingIncludeSystem \
 	--suppress=unmatchedSuppression \
 	--suppress=unusedFunction \
+	--suppress=staticFunction \
 	$(addprefix -I,$(CPPCHECK_INCLUDES)) \
 	$(addprefix -i,$(CPPCHECK_IGNORE))
 
@@ -80,15 +84,14 @@ LDFLAGS = -mmcu=$(MCU) $(DEFINES) $(addprefix -L,$(LIB_DIRS))
 
 # Build
 ## Linking
-$(TARGET): $(OBJECTS) $(HEADERS)
-	echo $(OBJECTS)
+$(TARGET): $(OBJECTS)
 	@mkdir -p $(dir $@)
 	$(CC) $(LDFLAGS) $^ -o $@
 
 ## Compiling
-$(OBJ_DIR)/%.o: %.c
+$(OBJ_DIR)/%.o: %.c $(HEADERS)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Phonies
 .PHONY: all clean flash cppcheck format
@@ -96,10 +99,10 @@ $(OBJ_DIR)/%.o: %.c
 all: $(TARGET)
 
 clean:
-	@$(RM) -rf $(BUILD_DIR)
+	@$(RM) -r $(BUILD_DIR)
 
 flash: $(TARGET)
-	@$(DEBUG) tilib "prog $(TARGET)"
+	@$(DEBUG) flash --config=$(CCXML) -u $(TARGET)
 
 cppcheck:
 	@$(CPPCHECK) $(CPPCHECK_FLAGS) $(SOURCES)
