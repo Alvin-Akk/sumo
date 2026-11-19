@@ -110,7 +110,7 @@ static void test_launchpad_io_pins_input(void)
 */
 int main(void)
 {
-    // test_assert();
+    //test_assert();
     test_blink_led();
     // test_launchpad_io_pins_output();
     // test_launchpad_io_pins_input();
